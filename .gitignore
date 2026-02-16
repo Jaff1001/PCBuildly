@@ -1,0 +1,32 @@
+# === Python & Environments ===
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.ipynb_checkpoints/
+
+# === Sensitive Files & Configs ===
+.env
+*.env
+.env.*
+*.log
+.streamlit/
+
+# === Data & Large Files ===
+*.csv
+*.xlsx
+*.xls
+# Keep the final dataset
+!src/data/finalDataset/laptopFinalDataset.csv
+
+# === IDE & System ===
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# === Build & Dist ===
+build/
+dist/
+*.egg-info/

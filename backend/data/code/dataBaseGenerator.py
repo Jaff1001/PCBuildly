@@ -89,7 +89,7 @@ def run_setup():
             name TEXT, 
             price DECIMAL, 
             socket_id INTEGER REFERENCES sockets(id), 
-            tdp BIGINT, 
+            tdp NUMERIC, 
             microarchitecture TEXT
         );
 
@@ -100,8 +100,8 @@ def run_setup():
             socket_id INTEGER REFERENCES sockets(id), 
             form_factor_id INTEGER REFERENCES form_factors(id),
             memory_type_id INTEGER REFERENCES memory_types(id),
-            max_memory BIGINT, 
-            memory_slots BIGINT
+            max_memory NUMERIC, 
+            memory_slots NUMERIC
         );
 
         CREATE TABLE video_cards (
@@ -109,8 +109,8 @@ def run_setup():
             name TEXT, 
             price DECIMAL, 
             chipset TEXT, 
-            memory_gb DECIMAL, 
-            length_mm BIGINT
+            memory_gb NUMERIC, 
+            length_mm NUMERIC
         );
 
         CREATE TABLE cases (
@@ -119,7 +119,7 @@ def run_setup():
             price DECIMAL, 
             type TEXT, 
             form_factor_id INTEGER REFERENCES form_factors(id),
-            max_gpu_length_mm BIGINT
+            max_gpu_length_mm NUMERIC
         );
 
         CREATE TABLE memory (
@@ -128,14 +128,14 @@ def run_setup():
             price DECIMAL, 
             memory_type_id INTEGER REFERENCES memory_types(id), 
             speed_text TEXT, 
-            cas_latency BIGINT
+            cas_latency NUMERIC
         );
 
         CREATE TABLE ups (
             id SERIAL PRIMARY KEY, 
             name TEXT, 
             price DECIMAL, 
-            capacity_watts BIGINT
+            capacity_watts NUMERIC
         );
         """
         cursor.execute(schema)
@@ -154,31 +154,40 @@ def run_setup():
         # Cpus
         cpu_df = pd.read_csv(DATA_PATH / 'clear_cpu.csv')
         for _, row in cpu_df.iterrows():
-                
             arch = row['microarchitecture']
             socket_name = arch_to_socket_translator.get(arch)
             s_id = socket_map[socket_name]
             cursor.execute("INSERT INTO cpus (name, price, socket_id, tdp, microarchitecture) VALUES (%s, %s, %s, %s, %s)",
-                            (row['name'], row['price'], s_id, int(row['tdp']), arch))
+                            (row['name'], row['price'], s_id, row['tdp'], arch))
     
-        # Motherboards ===
+        # Motherboards
         mobo_df = pd.read_csv(DATA_PATH / 'clear_motherboard.csv')
         for _, row in mobo_df.iterrows():
-
             s_name = row['socket']
             ram_type = socket_to_ram_translator.get(s_name)
             cursor.execute("INSERT INTO motherboards (name, price, socket_id, form_factor_id, memory_type_id, max_memory, memory_slots) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                            (row['name'], row['price'], socket_map[s_name], form_factor_map[row['form_factor']], memory_type_map[ram_type], int(row['max_memory']), int(row['memory_slots'])))
+                            (row['name'], row['price'], socket_map[s_name], form_factor_map[row['form_factor']], memory_type_map[ram_type], row['max_memory'], row['memory_slots']))
         
+        # Video cards
+        gpu_df = pd.read_csv(DATA_PATH / 'clear_video-card.csv')
+        for _, row in gpu_df.iterrows():
+            cursor.execute("INSERT INTO video_cards (name, price, chipset, memory_gb, length_mm) VALUES (%s, %s, %s, %s, %s)",
+                          (row['name'], row['price'], row['chipset'], row['memory'], row['length']))
+
+        # Cases
+        case_df = pd.read_csv(DATA_PATH / 'clear_case.csv')
+        for _, row in case_df.iterrows():
+            ff_name = case_to_ff_translator.get(row['type'], 'ATX') 
+            cursor.execute("INSERT INTO cases (name, price, type, form_factor_id) VALUES (%s, %s, %s, %s)",
+                          (row['name'], row['price'], row['type'], form_factor_map[ff_name]))
 
         # Memory
         mem_df = pd.read_csv(DATA_PATH / 'clear_memory.csv')
         for _, row in mem_df.iterrows():
-       
             speed_str = str(row['speed'])
             ram_type = speed_to_ddr_translator.get(speed_str[0])
             cursor.execute("INSERT INTO memory (name, price, memory_type_id, speed_text, cas_latency) VALUES (%s, %s, %s, %s, %s)",
-                            (row['name'], row['price'], memory_type_map[ram_type], speed_str, int(row['cas_latency'])))
+                            (row['name'], row['price'], memory_type_map[ram_type], speed_str, row['cas_latency']))
     
         connection.commit()
         print("Database correctly generated.")
